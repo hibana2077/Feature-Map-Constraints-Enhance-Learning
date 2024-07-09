@@ -63,9 +63,10 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer',
 print('==> Building model..')
 # Our model
 # net,net_name = DueHeadNet(num_classes=10), 'DueHeadNet'
+net,net_name = DueHeadNet(num_classes=10), 'DueHeadNet_NFMCE'
 # SE-ResNet
 # net,net_name = timm.create_model("seresnet18", num_classes=10), 'seresnet18'
-net,net_name = timm.create_model("seresnet34", num_classes=10), 'sereesnet34'
+# net,net_name = timm.create_model("seresnet34", num_classes=10), 'sereesnet34'
 # net,net_name = timm.create_model("seresnet50", num_classes=10), 'seresnet50'
 # net,net_name = timm.create_model("seresnet101", num_classes=10), 'seresnet101'
 # net,net_name = timm.create_model("seresnet152", num_classes=10), 'seresnet152'
@@ -105,6 +106,8 @@ def train(epoch):
         optimizer.zero_grad()
         if net_name == 'DueHeadNet':
             outputs,feature_maps = net(inputs)
+        elif net_name == 'DueHeadNet_NFMCE':
+            outputs,_ = net(inputs)
         else:
             outputs = net(inputs)
         loss = criterion(outputs, targets)
@@ -140,6 +143,8 @@ def test(epoch):
             inputs, targets = inputs.to(device), targets.to(device)
             if net_name == 'DueHeadNet':
                 outputs, feature_maps = net(inputs)
+            elif net_name == 'DueHeadNet_NFMCE':
+                outputs,_ = net(inputs)
             else:
                 outputs = net(inputs)
             loss = criterion(outputs, targets)
