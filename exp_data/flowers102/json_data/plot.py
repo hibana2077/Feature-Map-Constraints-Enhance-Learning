@@ -21,7 +21,7 @@ import seaborn as sns
 # Plotting accuracy vs parameters for different series of models
 plt.figure(figsize=(12, 8))
 sns.scatterplot(data=df, x='parms', y='best_acc', hue='Series', style='model_name', s=250)
-plt.title('Comparison of Model Accuracy vs Parameters (CIFAR-10)')
+plt.title('Comparison of Model Accuracy vs Parameters (Flowers-102)')
 plt.xlabel('Number of Parameters')
 plt.ylabel('Best Accuracy (%)')
 plt.legend(title='Model Series', loc='lower right')  # Changed legend location to lower right
@@ -39,7 +39,7 @@ for series, group_data in df.groupby('Series'):
         # Adjust text position to avoid overlap
         plt.annotate(txt, (sorted_data['parms'].iloc[i], sorted_data['best_acc'].iloc[i] + 0.15))
 
-plt.title('Comparison of Model Accuracy vs Parameters (CIFAR-10)')
+plt.title('Comparison of Model Accuracy vs Parameters (Flowers-102)')
 plt.xlabel('Number of Parameters')
 plt.ylabel('Best Accuracy (%)')
 plt.legend(title='Model Series', loc='lower right')
