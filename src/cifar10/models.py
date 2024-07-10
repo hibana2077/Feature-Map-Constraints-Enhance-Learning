@@ -5,12 +5,19 @@ import torch.nn as nn
 import numpy as np
 
 class DueHeadNet(nn.Module):
-    def __init__(self, num_classes=101):
+    def __init__(self, num_classes=101, base_model="seresnet18"):
         super(DueHeadNet, self).__init__()
-        self.model1 = timm.create_model("seresnet18", num_classes=num_classes)
-        self.model2 = timm.create_model("seresnet18", num_classes=num_classes)
+        self.model1 = timm.create_model(base_model, num_classes=num_classes)
+        self.model2 = timm.create_model(base_model, num_classes=num_classes)
+        self.feature_table = {
+            "seresnet18": 512,
+            "seresnet34": 512,
+            "seresnet50": 2048,
+            "seresnet101": 2048,
+            "seresnet152": 2048
+        }
         self.cls = nn.Sequential(
-            nn.Linear(1024, 512),
+            nn.Linear(self.feature_table[base_model]*2, 512),
             nn.GELU(),
             nn.Dropout(0.5),
             nn.Linear(512, num_classes)
@@ -28,7 +35,7 @@ class DueHeadNet(nn.Module):
         return logits, feature_maps_list
     
 if __name__ == '__main__':
-    model = DueHeadNet()
+    model = DueHeadNet(num_classes=10, base_model="seresnet18")
     x = torch.randn(4, 3, 32, 32)
     (logits,feature_maps) = model(x)
     print(f"Parameter count(M): {sum(p.numel() for p in model.parameters()) / 1e6}")

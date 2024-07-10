@@ -24,8 +24,10 @@ test_loss_history = []
 test_acc_history = []
 BATCH_SIZE = 128
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
-parser.add_argument('--resume', '-r', action='store_true',
-                    help='resume from checkpoint')
+parser.add_argument('--base_model', default='seresnet18', type=str, help='Base model')
+parser.add_argument('--num_classes', default=10, type=int, help='Number of classes')
+parser.add_argument('--net_name', default='DueHeadNet', type=str, help='Network name')
+parser.add_argument('--FMCE', default=True, type=bool, help='Feature Maps Constraints Enhancement')
 args = parser.parse_args()
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -56,35 +58,33 @@ testset = torchvision.datasets.CIFAR10(
 testloader = torch.utils.data.DataLoader(
     testset, batch_size=100, shuffle=False)
 
-classes = ('plane', 'car', 'bird', 'cat', 'deer',
-           'dog', 'frog', 'horse', 'ship', 'truck')
-
 # Model
 print('==> Building model..')
 # Our model
-# net,net_name = DueHeadNet(num_classes=10), 'DueHeadNet'
-net,net_name = DueHeadNet(num_classes=10), 'DueHeadNet_NFMCE'
+## DueHeadNet with FMCE
+# net,net_name, FMCE = DueHeadNet(base_model="seresnet18", num_classes=10), 'DueHeadNet(seresnet18)', True
+net,net_name, FMCE = DueHeadNet(base_model="seresnet34", num_classes=10), 'DueHeadNet(seresnet34)', True
+# net,net_name, FMCE = DueHeadNet(base_model="seresnet50", num_classes=10), 'DueHeadNet(seresnet50)', True
+# net,net_name, FMCE = DueHeadNet(base_model="seresnet101", num_classes=10), 'DueHeadNet(seresnet101)', True
+# net,net_name, FMCE = DueHeadNet(base_model="seresnet152", num_classes=10), 'DueHeadNet(seresnet152)', True
+## DueHeadNet without FMCE
+# net,net_name, FMCE = DueHeadNet(base_model="seresnet18", num_classes=10), 'DueHeadNet_NFMCE(seresnet18)', False
+# net,net_name, FMCE = DueHeadNet(base_model="seresnet34", num_classes=10), 'DueHeadNet_NFMCE(seresnet34)', False
+# net,net_name, FMCE = DueHeadNet(base_model="seresnet50", num_classes=10), 'DueHeadNet_NFMCE(seresnet50)', False
+# net,net_name, FMCE = DueHeadNet(base_model="seresnet101", num_classes=10), 'DueHeadNet_NFMCE(seresnet101)', False
+# net,net_name, FMCE = DueHeadNet(base_model="seresnet152", num_classes=10), 'DueHeadNet_NFMCE(seresnet152)', False
 # SE-ResNet
-# net,net_name = timm.create_model("seresnet18", num_classes=10), 'seresnet18'
-# net,net_name = timm.create_model("seresnet34", num_classes=10), 'sereesnet34'
-# net,net_name = timm.create_model("seresnet50", num_classes=10), 'seresnet50'
-# net,net_name = timm.create_model("seresnet101", num_classes=10), 'seresnet101'
-# net,net_name = timm.create_model("seresnet152", num_classes=10), 'seresnet152'
+# net,net_name, FMCE = timm.create_model("seresnet18", num_classes=10), 'seresnet18', False
+# net,net_name, FMCE = timm.create_model("seresnet34", num_classes=10), 'seresnet34', False
+# net,net_name, FMCE = timm.create_model("seresnet50", num_classes=10), 'seresnet50', False
+# net,net_name, FMCE = timm.create_model("seresnet101", num_classes=10), 'seresnet101', False
+# net,net_name, FMCE = timm.create_model("seresnet152", num_classes=10), 'seresnet152', False
 print('Number of parameters(M):', sum(p.numel() for p in net.parameters()) / 1e6)
 print(net_name)
 net = net.to(device)
 if device == 'cuda':
     net = torch.nn.DataParallel(net)
     cudnn.benchmark = True
-
-if args.resume:
-    # Load checkpoint.
-    print('==> Resuming from checkpoint..')
-    assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
-    checkpoint = torch.load('./checkpoint/ckpt.pth')
-    net.load_state_dict(checkpoint['net'])
-    best_acc = checkpoint['acc']
-    start_epoch = checkpoint['epoch']
 
 criterion = nn.CrossEntropyLoss()
 feature_maps_criterion = CosineSimilarityLoss()
@@ -104,19 +104,17 @@ def train(epoch):
     for batch_idx, (inputs, targets) in enumerate(trainloader):
         inputs, targets = inputs.to(device), targets.to(device)
         optimizer.zero_grad()
-        if net_name == 'DueHeadNet':
+        if FMCE:
             outputs,feature_maps = net(inputs)
-        elif net_name == 'DueHeadNet_NFMCE':
+        elif FMCE == False and not net_name.startswith('DueHeadNet'):
             outputs,_ = net(inputs)
         else:
             outputs = net(inputs)
         loss = criterion(outputs, targets)
-        if net_name == 'DueHeadNet':
+        if FMCE:
             feature_maps_a, feature_maps_b = feature_maps[0], feature_maps[1]
-            feature_maps_loss_alpha = feature_maps_criterion(feature_maps_a,feature_maps_b)
-            feature_maps_loss_beta = feature_maps_criterion(feature_maps_b,feature_maps_a)
-            feature_maps_loss_mean = (feature_maps_loss_alpha + feature_maps_loss_beta) / 2
-            loss += feature_maps_loss_mean
+            feature_maps_loss = feature_maps_criterion(feature_maps_a,feature_maps_b)
+            loss += feature_maps_loss
         loss.backward()
         optimizer.step()
 
@@ -141,19 +139,17 @@ def test(epoch):
     with torch.no_grad():
         for batch_idx, (inputs, targets) in enumerate(testloader):
             inputs, targets = inputs.to(device), targets.to(device)
-            if net_name == 'DueHeadNet':
+            if FMCE:
                 outputs, feature_maps = net(inputs)
-            elif net_name == 'DueHeadNet_NFMCE':
+            elif FMCE == False and not net_name.startswith('DueHeadNet'):
                 outputs,_ = net(inputs)
             else:
                 outputs = net(inputs)
             loss = criterion(outputs, targets)
-            if net_name == 'DueHeadNet':
+            if FMCE:
                 feature_maps_a, feature_maps_b = feature_maps[0], feature_maps[1]
-                feature_maps_loss_alpha = feature_maps_criterion(feature_maps_a,feature_maps_b)
-                feature_maps_loss_beta = feature_maps_criterion(feature_maps_b,feature_maps_a)
-                feature_maps_loss_mean = (feature_maps_loss_alpha + feature_maps_loss_beta) / 2
-                loss += feature_maps_loss_mean
+                feature_maps_loss = feature_maps_criterion(feature_maps_a,feature_maps_b)
+                loss += feature_maps_loss
             test_loss += loss.item()
             _, predicted = outputs.max(1)
             total += targets.size(0)
@@ -168,15 +164,7 @@ def test(epoch):
     # Save checkpoint.
     acc = 100.*correct/total
     if acc > best_acc:
-        print('Saving..')
-        state = {
-            'net': net.state_dict(),
-            'acc': acc,
-            'epoch': epoch,
-        }
-        if not os.path.isdir('checkpoint'):
-            os.mkdir('checkpoint')
-        torch.save(state, './checkpoint/ckpt.pth')
+        print('New best model found!')
         best_acc = acc
 
 
