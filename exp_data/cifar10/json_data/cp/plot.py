@@ -37,7 +37,7 @@ for series, group_data in df.groupby('Series'):
     plt.plot(sorted_data['parms'], sorted_data['best_acc'], label=series, marker='o', markersize=12)  # Increased marker size
     for i, txt in enumerate(sorted_data['model_name']):
         # Adjust text position to avoid overlap
-        plt.annotate(txt, (sorted_data['parms'].iloc[i], sorted_data['best_acc'].iloc[i] + 0.15))
+        plt.annotate(txt, (sorted_data['parms'].iloc[i], sorted_data['best_acc'].iloc[i]))
 
 plt.title('Comparison of Model Accuracy vs Parameters (CIFAR-10)')
 plt.xlabel('Number of Parameters')
