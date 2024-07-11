@@ -1,1 +1,0 @@
-{"DueHeadNet(seresnet34)": {"best_acc": 77.83, "parms": 43038990}, "DueHeadNet(seresnet34)NFMCE": {"best_acc": 77.7, "parms": 43038990}, "seresnet152": {"best_acc": 77.88, "parms": 64793338}}
