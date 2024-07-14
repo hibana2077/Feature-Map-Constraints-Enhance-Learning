@@ -34,6 +34,10 @@ We employ the AdamW optimizer with a learning rate of 4e-4 and a weight decay of
 
 Evaluation is performed using the Accuracy metric, which calculates the percentage of correctly predicted labels in the test dataset.
 
+And The Accuracy formula is as follows:
+
+$$Accuracy = \frac{Number of Correct Predictions}{Total Number of Predictions}$$
+
 We compare the performance of the following models:
 
 | Model Name | Series | Description |
